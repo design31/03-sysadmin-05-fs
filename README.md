@@ -132,7 +132,81 @@ Device     Boot   Start     End Sectors  Size Id Type
 
 ---
 
-1. Используя `sfdisk`, перенесите данную таблицу разделов на второй диск.
+1. Используя `sfdisk`, перенесите данную таблицу разделов на второй диск.  
+ 
+ Прямой команды копирования разделов я не нашёл, использовал опцию -b (backup)  
+ с последующим восстановлением в другой диск:
+ ```
+ sfdisk -b /dev/sdb
+
+Welcome to sfdisk (util-linux 2.34).
+Changes will remain in memory only, until you decide to write them.
+Be careful before using the write command.
+
+Checking that no-one is using this disk right now ... OK
+
+Backup files:
+         MBR (offset     0, size   512): sdb_bak-sdb-0x00000000.bak
+
+Disk /dev/sdb: 2.51 GiB, 2684354560 bytes, 5242880 sectors
+Disk model: VBOX HARDDISK
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0xd12211b0
+
+Old situation:
+
+Device     Boot   Start     End Sectors  Size Id Type
+/dev/sdb1          2048 4196351 4194304    2G 83 Linux
+/dev/sdb2       4196352 5242879 1046528  511M 83 Linux
+
+Type 'help' to get more information.
+
+>>> write
+
+New situation:
+Disklabel type: dos
+Disk identifier: 0xd12211b0
+
+Device     Boot   Start     End Sectors  Size Id Type
+/dev/sdb1          2048 4196351 4194304    2G 83 Linux
+/dev/sdb2       4196352 5242879 1046528  511M 83 Linux
+
+The partition table has been altered.
+Calling ioctl() to re-read partition table.
+Syncing disks.
+``` 
+Проверим созданный файл бэкапа:
+```
+ll
+-rw------- 1 root    root     512 Nov 30 15:49 sdb_bak-sdb-0x00000000.bak
+```
+Восстановим его в диск sdc:
+```
+dd if=sdb_bak-sdb-0x00000000.bak of=/dev/sdc
+1+0 records in
+1+0 records out
+512 bytes copied, 0.000435306 s, 1.2 MB/s
+```
+Проверим партиции:
+```
+fdisk -l /dev/sdc
+Disk /dev/sdc: 2.51 GiB, 2684354560 bytes, 5242880 sectors
+Disk model: VBOX HARDDISK
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0xd12211b0
+
+Device     Boot   Start     End Sectors  Size Id Type
+/dev/sdc1          2048 4196351 4194304    2G 83 Linux
+/dev/sdc2       4196352 5242879 1046528  511M 83 Linux
+```
+
+---
 
 1. Соберите `mdadm` RAID1 на паре разделов 2 Гб.
 
