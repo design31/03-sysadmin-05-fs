@@ -7,14 +7,14 @@
 
 ---
 
-1. Могут ли файлы, являющиеся жесткой ссылкой на один объект, иметь разные права доступа и владельца? Почему?  
+2. Могут ли файлы, являющиеся жесткой ссылкой на один объект, иметь разные права доступа и владельца? Почему?  
 
 Жесткая ссылка это по сути зеркальная копия объекта, наследующая его права, владельца и группу. Имеет тот же inode что и оригинальный файл.  
 Поэтому разных владельцев и разные права оригинал и хардлинк иметь не могут.  
 
 ---
 
-1. Сделайте `vagrant destroy` на имеющийся инстанс Ubuntu. Замените содержимое Vagrantfile следующим:
+3. Сделайте `vagrant destroy` на имеющийся инстанс Ubuntu. Замените содержимое Vagrantfile следующим:
 
     ```bash
     Vagrant.configure("2") do |config|
@@ -78,7 +78,7 @@ I/O size (minimum/optimal): 512 bytes / 512 bytes
 ---
 
 
-1. Используя `fdisk`, разбейте первый диск на 2 раздела: 2 Гб, оставшееся пространство.  
+4. Используя `fdisk`, разбейте первый диск на 2 раздела: 2 Гб, оставшееся пространство.  
  ```
  fdisk /dev/sdb
 
@@ -132,7 +132,7 @@ Device     Boot   Start     End Sectors  Size Id Type
 
 ---
 
-1. Используя `sfdisk`, перенесите данную таблицу разделов на второй диск.  
+5. Используя `sfdisk`, перенесите данную таблицу разделов на второй диск.  
  
  Прямой команды копирования разделов я не нашёл, использовал опцию -b (backup)  
  с последующим восстановлением в другой диск:
@@ -208,11 +208,57 @@ Device     Boot   Start     End Sectors  Size Id Type
 
 ---
 
-1. Соберите `mdadm` RAID1 на паре разделов 2 Гб.
+6. Соберите `mdadm` RAID1 на паре разделов 2 Гб.
+ 
+ ```
+ mdadm --create --verbose /dev/md0 -l 1 -n 2 /dev/sd{b1,c1}
+ mdadm: Note: this array has metadata at the start and
+    may not be suitable as a boot device.  If you plan to
+    store '/boot' on this device please ensure that
+    your boot-loader understands md/v1.x metadata, or use
+    --metadata=0.90
+mdadm: size set to 2094080K
+Continue creating array? yes
+mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md0 started.
+ ```
+ ---
 
-1. Соберите `mdadm` RAID0 на второй паре маленьких разделов.
+7. Соберите `mdadm` RAID0 на второй паре маленьких разделов.  
+ 
+ ```
+ mdadm --create --verbose /dev/md1 -l 0 -n 2 /dev/sd{b2,c2}
+mdadm: chunk size defaults to 512K
+mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md1 started.
+ ```
+Посмотрим на созданные массивы:  
 
-1. Создайте 2 независимых PV на получившихся md-устройствах.
+```
+lsblk
+NAME                 MAJ:MIN RM  SIZE RO TYPE  MOUNTPOINT
+sda                    8:0    0   64G  0 disk
+├─sda1                 8:1    0  512M  0 part  /boot/efi
+├─sda2                 8:2    0    1K  0 part
+└─sda5                 8:5    0 63.5G  0 part
+  ├─vgvagrant-root   253:0    0 62.6G  0 lvm   /
+  └─vgvagrant-swap_1 253:1    0  980M  0 lvm   [SWAP]
+sdb                    8:16   0  2.5G  0 disk
+├─sdb1                 8:17   0    2G  0 part
+│ └─md0                9:0    0    2G  0 raid1
+└─sdb2                 8:18   0  511M  0 part
+  └─md1                9:1    0 1018M  0 raid0
+sdc                    8:32   0  2.5G  0 disk
+├─sdc1                 8:33   0    2G  0 part
+│ └─md0                9:0    0    2G  0 raid1
+└─sdc2                 8:34   0  511M  0 part
+  └─md1                9:1    0 1018M  0 raid0
+```
+
+---
+
+8. Создайте 2 независимых PV на получившихся md-устройствах.  
+ 
 
 1. Создайте общую volume-group на этих двух PV.
 
