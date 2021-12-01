@@ -482,21 +482,116 @@ sdc                             8:32   0  2.5G  0 disk
     0
     ```
 
-1. Используя pvmove, переместите содержимое PV с RAID0 на RAID1.
+Вотъ:
+```
+root@vagrant:/home/vagrant# gzip -t /tmp/logical_vol1/test.gz
+root@vagrant:/home/vagrant# echo $?
+0
+```
 
-1. Сделайте `--fail` на устройство в вашем RAID1 md.
+---
 
-1. Подтвердите выводом `dmesg`, что RAID1 работает в деградированном состоянии.
+16. Используя pvmove, переместите содержимое PV с RAID0 на RAID1.
+ 
+ ```
+ root@vagrant:/home/vagrant# pvmove -n /dev/vol_group1/logical_vol1 /dev/md1 /dev/md0
+  /dev/md1: Moved: 12.00%
+  /dev/md1: Moved: 100.00%
+ ```
+ Проверим:
+ ```
+ root@vagrant:/home/vagrant# lsblk
+NAME                          MAJ:MIN RM  SIZE RO TYPE  MOUNTPOINT
+sda                             8:0    0   64G  0 disk
+├─sda1                          8:1    0  512M  0 part  /boot/efi
+├─sda2                          8:2    0    1K  0 part
+└─sda5                          8:5    0 63.5G  0 part
+  ├─vgvagrant-root            253:0    0 62.6G  0 lvm   /
+  └─vgvagrant-swap_1          253:1    0  980M  0 lvm   [SWAP]
+sdb                             8:16   0  2.5G  0 disk
+├─sdb1                          8:17   0    2G  0 part
+│ └─md0                         9:0    0    2G  0 raid1
+│   └─vol_group1-logical_vol1 253:2    0  100M  0 lvm   /tmp/logical_vol1
+└─sdb2                          8:18   0  511M  0 part
+  └─md1                         9:1    0 1018M  0 raid0
+sdc                             8:32   0  2.5G  0 disk
+├─sdc1                          8:33   0    2G  0 part
+│ └─md0                         9:0    0    2G  0 raid1
+│   └─vol_group1-logical_vol1 253:2    0  100M  0 lvm   /tmp/logical_vol1
+└─sdc2                          8:34   0  511M  0 part
+  └─md1                         9:1    0 1018M  0 raid0
+```
 
-1. Протестируйте целостность файла, несмотря на "сбойный" диск он должен продолжать быть доступен:
+---
+
+17. Сделайте `--fail` на устройство в вашем RAID1 md.
+
+ ```
+ root@vagrant:/home/vagrant# mdadm /dev/md0 -f /dev/sdc1
+mdadm: set /dev/sdc1 faulty in /dev/md0
+root@vagrant:/home/vagrant# mdadm --detail /dev/md0
+/dev/md0:
+           Version : 1.2
+     Creation Time : Wed Dec  1 14:55:44 2021
+        Raid Level : raid1
+        Array Size : 2094080 (2045.00 MiB 2144.34 MB)
+     Used Dev Size : 2094080 (2045.00 MiB 2144.34 MB)
+      Raid Devices : 2
+     Total Devices : 2
+       Persistence : Superblock is persistent
+
+       Update Time : Wed Dec  1 16:43:02 2021
+             State : clean, degraded
+    Active Devices : 1
+   Working Devices : 1
+    Failed Devices : 1
+     Spare Devices : 0
+
+Consistency Policy : resync
+
+              Name : vagrant:0  (local to host vagrant)
+              UUID : 6c45c31a:8c1a1cb5:4596b239:d6d22abf
+            Events : 22
+
+    Number   Major   Minor   RaidDevice State
+       0       8       17        0      active sync   /dev/sdb1
+       -       0        0        1      removed
+
+       1       8       33        -      faulty   /dev/sdc1
+ ```
+ 
+ ---
+ 
+18. Подтвердите выводом `dmesg`, что RAID1 работает в деградированном состоянии.
+ 
+ ```
+ [Wed Dec  1 16:42:58 2021] md/raid1:md0: Disk failure on sdc1, disabling device.
+                           md/raid1:md0: Operation continuing on 1 devices.
+ ``` 
+ 
+ ---
+
+19. Протестируйте целостность файла, несмотря на "сбойный" диск он должен продолжать быть доступен:
 
     ```bash
     root@vagrant:~# gzip -t /tmp/new/test.gz
     root@vagrant:~# echo $?
     0
     ```
+    Проверяю:
+    ```
+    root@vagrant:/home/vagrant# gzip -t /tmp/logical_vol1/test.gz
+    root@vagrant:/home/vagrant# echo $?
+    0
+    ```
+    
+    ---
 
-1. Погасите тестовый хост, `vagrant destroy`.
-
+20. Погасите тестовый хост, `vagrant destroy`.
+ ```
+ c:\HashiCorp\Vagrant\netology>vagrant destroy
+    default: Are you sure you want to destroy the 'default' VM? [y/N] y
+==> default: Destroying VM and associated drives...
+ ```
  
  ---
